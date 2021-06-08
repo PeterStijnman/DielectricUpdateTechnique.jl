@@ -42,3 +42,7 @@ imp = DUTCH.cellToYeeDielectric(vσ, vϵ, x, y, z)
 Δ, loc = DUTCH.computeUpdateMaps(bg,imp)
 # there are 24 edges to be updated for 2 non neighbouring cells
 @test sum(vec(loc[:updateLocˣ])) + sum(vec(loc[:updateLocʸ])) + sum(vec(loc[:updateLocᶻ])) == 24
+
+# test for getS(_gpu) and getC 
+S = DUTCH.getS(loc)
+size(S.N)

@@ -13,3 +13,12 @@ imp = (σˣ = ones(3,3,3),σʸ = ones(3,3,3),σᶻ= 2 .* ones(3,3,3),ϵˣ = ones
 
 @btime DUTCH.computeUpdateMaps(bg,imp);
 
+using CUDA
+using LinearAlgebra
+using SparseArrays
+
+A = spdiagm(10,10,0=>ones(10))
+
+C = (;A)
+typeof(C)
+CUDA.CUSPARSE.CuSparseMatrixCSC.(C)
