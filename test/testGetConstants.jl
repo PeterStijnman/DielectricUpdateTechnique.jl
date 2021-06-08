@@ -12,7 +12,7 @@ m = DUTCH.getConstants(f);
 @test m[:kb] == 2*π*f/m[:c]
 @test m[:λ]  == m[:c]/f
 
-f = 1337e6; #300MHz
+f = 1337e6; #1337MHz
 m = DUTCH.getConstants(f);
 @test m[:f₀] == f
 @test m[:ω]  == 2*π*f
