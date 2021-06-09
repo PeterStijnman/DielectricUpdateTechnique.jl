@@ -1,12 +1,12 @@
 import DielectricUpdateTechique as DUTCH
 using Test
 
-x = collect(0:1e-3:3e-3)
-y = collect(0:1e-3:3e-3)
-z = collect(0:1e-3:3e-3)
+x = collect(0:1f-3:2f-3)
+y = collect(0:1f-3:2f-3)
+z = collect(0:1f-3:2f-3)
 
-vσ = rand(3, 3, 3);
-vϵ = rand(3, 3, 3);
+vσ = rand(Float32,3, 3, 3);
+vϵ = rand(Float32,3, 3, 3);
 
 bg = DUTCH.cellToYeeDielectric(vσ, vϵ, x, y, z)
 
@@ -29,8 +29,8 @@ imp = DUTCH.cellToYeeDielectric(vσ, vϵ, x, y, z)
 @test sum(vec(loc[:updateLocˣ])) + sum(vec(loc[:updateLocʸ])) + sum(vec(loc[:updateLocᶻ])) == 20
 
 
-vσ = rand(3, 3, 3);
-vϵ = rand(3, 3, 3);
+vσ = rand(Float32,3, 3, 3);
+vϵ = rand(Float32,3, 3, 3);
 
 bg = DUTCH.cellToYeeDielectric(vσ, vϵ, x, y, z)
 
@@ -44,5 +44,45 @@ imp = DUTCH.cellToYeeDielectric(vσ, vϵ, x, y, z)
 @test sum(vec(loc[:updateLocˣ])) + sum(vec(loc[:updateLocʸ])) + sum(vec(loc[:updateLocᶻ])) == 24
 
 # test for getS(_gpu) and getC 
+
+x = collect(0:1f-3:5f-3)
+y = collect(0:1f-3:5f-3)
+z = collect(0:1f-3:5f-3)
+
+
+vσ = rand(Float32,5, 5, 5);
+vϵ = rand(Float32,5, 5, 5);
+
+bg = DUTCH.cellToYeeDielectric(vσ, vϵ, x, y, z)
+
+vσ[2,2,2] = 2 .* vσ[2,2,2];
+vσ[4,2,2] = 2 .* vσ[4,2,2];
+
+imp = DUTCH.cellToYeeDielectric(vσ, vϵ, x, y, z)
+
+Δ, loc = DUTCH.computeUpdateMaps(bg,imp)
+
 S = DUTCH.getS(loc)
-size(S.N)
+
+@test count(S.N .==1) == 24
+@test size(S.N) == ((length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1), 24)
+@test count(S.T .==1) == 24
+@test size(S.T) == (24, (length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1))
+
+S = DUTCH.getS_gpu(loc) |> x -> (N = collect(x.N), T = collect(x.T))
+
+@test count(S.N .==1) == 24
+@test size(S.N) == ((length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1), 24)
+@test count(S.T .==1) == 24
+@test size(S.T) == (24, (length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1))
+
+f = 300e6; #300MHz
+m = DUTCH.getConstants(f);
+C = DUTCH.getC(Δ,m)
+
+@test length(C) == 24
+@test sum(imag.(C)) == 0f0
+@test round(sum(real.(C)),digits=1)  == round(sum(real.(Δ.σˣ)) + sum(real.(Δ.σʸ)) + sum(real.(Δ.σᶻ)),digits = 1)
+@test typeof(C) == Vector{ComplexF32}
+
+

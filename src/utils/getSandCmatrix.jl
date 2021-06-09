@@ -3,9 +3,10 @@ S = getS(logicLocations).\n
 given a boolean map with all the x, y, z edges that are updated it returns the sparse support matrix S.\n
 this is used to map quantities from the large domain (enitre simulation domain) to the update domain.\n
 S = (N = S, T = transpose of S).\n
+WARNING: any updates on the edges are not taken into account.\n
 """
 function getS(logicLocations)
-    T = ComplexF32
+    T = Float32
 
     Sxloc = vec(logicLocations[1][:,2:end-1,2:end-1])
     m  = length(Sxloc)
@@ -35,9 +36,10 @@ S = getS_gpu(logicLocations).\n
 given a boolean map with all the x, y, z edges that are updated it returns the sparse support matrix S on the GPU.\n
 this is used to map quantities from the large domain (enitre simulation domain) to the update domain.\n
 S = (N = S, T = transpose of S).\n
+WARNING: any updates on the edges are not taken into account.\n
 """
 function getS_gpu(logicLocations)
-    T = ComplexF32
+    T = Float32
 
     Sxloc = vec(logicLocations[1][:,2:end-1,2:end-1])
     m  = length(Sxloc)

@@ -1,6 +1,6 @@
 module DielectricUpdateTechique
 
-using LinearAlgebra, SparseArrays
+using LinearAlgebra, SparseArrays, CUDA
 
 """
 caxpy!(c, a, x, y).\n
@@ -15,8 +15,11 @@ end
 include("utils/getConstants.jl")
 include("utils/computeUpdateMaps.jl")
 include("utils/getSandCmatrix.jl")
+include("utils/operators.jl")
+include("utils/GreensFunctions.jl")
+
 
 # inputs for method are bg Dielectric, new dielectric, location of new dielectric, incident electric field
-include("cellToYeeDielectric.jl")
+include("utils/cellToYeeDielectric.jl")
 
 end

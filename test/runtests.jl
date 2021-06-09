@@ -1,3 +1,4 @@
+using Core: ComplexF32
 using DielectricUpdateTechique
 using Test
 
@@ -7,5 +8,6 @@ using Test
     include("testGetConstants.jl")
     include("testCellToYeeDielectric.jl")
     include("testComputeUpdateMaps.jl")
+    include("testOperators.jl")
 end
 
