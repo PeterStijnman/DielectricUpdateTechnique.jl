@@ -5,11 +5,10 @@ This radius is used to compute the weakened Greens functions.\n
 """
 function createGridGreensFunction(nCells,res)
     #get max dimensions
-    #d = 2^(ceil(Int,log2(findmax(nCells.+2)[1])+1))
     dx,dy,dz = 2 .^(ceil.(Int,log2.(nCells.+2).+1))
-    lx = res[1].*collect(-dx/2:dx/2-1)
-    ly = res[2].*collect(-dy/2:dy/2-1)
-    lz = res[3].*collect(-dz/2:dz/2-1)
+    lx = res[1].*collect(-dx/2f0:dx/2f0-1)
+    ly = res[2].*collect(-dy/2f0:dy/2f0-1)
+    lz = res[3].*collect(-dz/2f0:dz/2f0-1)
 
     # repeat the axes along the number corresponding dimensions
     X = repeat(lx,outer=(1,dy,dz))
@@ -41,12 +40,12 @@ function _createGreensFunction(r,kb,a)
 end
 
 """
-G = createGreensFunctions(numCells,res,kb).\n
+G = createGreensFunctions(nCells,res,kb).\n
 creates the green function on the larger grid.\n
 """
-function createGreensFunctions(numCells,res,kb)
+function createGreensFunctions(nCells,res,kb)
     a = findmin(res)[1]/2
-    r = createGridGreensFunction(numCells,res)
+    r = createGridGreensFunction(nCells,res)
     G = _createGreensFunction(r,kb,a)
     return prod(res).*G
 end
@@ -99,4 +98,54 @@ function ETotalMinEScatteredForResidual!(v,eT,a,A,G,χ,Ig,AToE,efft,planfft,plan
     _greensFunctionTimesContrastSource!(a,G,χ.patient,eT,A,Ig,efft,planfft,planifft)
     mul!(eT,AToE,a,-scalar,scalar)
     axpy!(one(ComplexF32),eT,v)
+end
+
+"""
+libraryMatrixTimesCurrentDensity!(JContrast,nUpdates,jv,eI,S,tmp,efft,G,A,w,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq).\n
+calculate the scattered electric field given the current density.\n
+"""
+function libraryMatrixTimesCurrentDensity!(JContrast,jv,eI,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq)
+    vInputTup = -JContrast |> cu 
+
+    VIE.setSourceValuesInDomain!(jv,eI,vInputTup,S)
+    #from source in E incident to the actual incident electric field
+    VIE.JIncToEInc!(eI,a,A,G,χ,Ig,AToE,efft,pfft,pifft,scaling)
+    #compute total electric field
+    VIE.cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq)
+    return x
+end #TODO: check if cpu version/collect are required
+
+
+"""
+setSourceValuesInDomain!(jv,eI,v,S)\n
+will set the current density values (jv's) to -v\n
+Using the S matrix these are placed into the incident electric field.\n
+"""
+function setSourceValuesInDomain!(jv,eI,v,S)
+    # set source values to the vector we are multiplying A with
+    jv .= -one(ComplexF32).*v
+    # set the source values into the incident electric field (will be equal to Jinc before the function JIncToEinc!)
+    mul!(eI,S.N,jv)
+end
+
+
+"""
+wrapperVIE!(output,jv,eI,C,vInput,S,tmp,efft,G,A,w,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq,nc)\n
+In place version to calculate Av = (I-CSZ)v = v - CSZv.\n
+-CSZv is calculated using the VIE method by setting the sources to -v and multiplying the edges with the corresponding C value.
+"""
+function wrapperVIE!(output,jv,eI,C,vInput,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq)
+    # set sources in the vacuum to the correct values 
+    setSourceValuesInDomain!(jv,eI,vInput,S)
+    # calculate the incident electric field inside the vacuum
+    JIncToEInc!(eI,a,A,G,χ,Ig,AToE,efft,pfft,pifft,scaling)
+    # solve for the field inside the patient anatomy
+    cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq)
+    # calculate the (v - CSZv) vector for the minimization process
+    
+    mul!(output,S.T,x)
+    @. output *= C
+    
+    axpy!(one(ComplexF32),vInput,output) # output = vInput - CSZvInput
+    #output += vInput
 end

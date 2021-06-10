@@ -69,20 +69,33 @@ S = DUTCH.getS(loc)
 @test count(S.T .==1) == 24
 @test size(S.T) == (24, (length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1))
 
+#=
 S = DUTCH.getS_gpu(loc) |> x -> (N = collect(x.N), T = collect(x.T))
 
 @test count(S.N .==1) == 24
 @test size(S.N) == ((length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1), 24)
 @test count(S.T .==1) == 24
 @test size(S.T) == (24, (length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1))
+=#
+
+@test sum(DUTCH.getNUpdates(loc)) == 24
 
 f = 300e6; #300MHz
 m = DUTCH.getConstants(f);
 C = DUTCH.getC(Δ,m)
 
 @test length(C) == 24
-@test sum(imag.(C)) == 0f0
+@test sum(imag.(C)) == 0
 @test round(sum(real.(C)),digits=1)  == round(sum(real.(Δ.σˣ)) + sum(real.(Δ.σʸ)) + sum(real.(Δ.σᶻ)),digits = 1)
 @test typeof(C) == Vector{ComplexF32}
 
 
+χ = DUTCH.setDielectric(bg,m,[3,3,3]);
+@test abs.(χ.vac) == 1
+@test size(χ.patient) == (16,16,16,3)
+@test abs.(χ.patient[8,7,7,1]) == 0
+@test abs.(χ.patient[3,3,3,1]) != 0
+@test abs.(χ.patient[7,8,7,2]) == 0
+@test abs.(χ.patient[3,3,3,2]) != 0
+@test abs.(χ.patient[7,7,8,3]) == 0
+@test abs.(χ.patient[3,3,3,3]) != 0
