@@ -6,29 +6,24 @@ S = (N = S, T = transpose of S).\n
 WARNING: any updates on the edges are not taken into account.\n
 """
 function getS(logicLocations)
-    T = Float32
+    T = ComplexF32
 
     Sxloc = vec(logicLocations[1][:,2:end-1,2:end-1])
     m  = length(Sxloc)
     n  = count(Sxloc)
     x  = sparse(findall(Sxloc),collect(1:n),ones(T,n),m,n)
-    xT = sparse(collect(1:n),findall(Sxloc),ones(T,n),n,m)
     
     Syloc = vec(logicLocations[2][2:end-1,:,2:end-1])
     m  = length(Syloc)
     n  = count(Syloc)
     y  = sparse(findall(Syloc),collect(1:n),ones(T,n),m,n)
-    yT = sparse(collect(1:n),findall(Syloc),ones(T,n),n,m)
     
     Szloc = vec(logicLocations[3][2:end-1,2:end-1,:])
     m  = length(Szloc)
     n  = count(Szloc)
     z  = sparse(findall(Szloc),collect(1:n),ones(T,n),m,n)
-    zT = sparse(collect(1:n),findall(Szloc),ones(T,n),n,m)
     
-    N  = blockdiag(x,y,z)
-    Tr = blockdiag(xT,yT,zT)
-    return (N = N, T = Tr)
+    return blockdiag(x,y,z)
 end
 
 """
@@ -39,31 +34,27 @@ S = (N = S, T = transpose of S).\n
 WARNING: any updates on the edges are not taken into account.\n
 """
 function getS_gpu(logicLocations)
-    T = Float32
+    T = ComplexF32
 
     Sxloc = vec(logicLocations[1][:,2:end-1,2:end-1])
     m  = length(Sxloc)
     n  = count(Sxloc)
     x  = sparse(findall(Sxloc),collect(1:n),ones(T,n),m,n)
-    xT = sparse(collect(1:n),findall(Sxloc),ones(T,n),n,m)
     
     Syloc = vec(logicLocations[2][2:end-1,:,2:end-1])
     m  = length(Syloc)
     n  = count(Syloc)
     y  = sparse(findall(Syloc),collect(1:n),ones(T,n),m,n)
-    yT = sparse(collect(1:n),findall(Syloc),ones(T,n),n,m)
     
     Szloc = vec(logicLocations[3][2:end-1,2:end-1,:])
     m  = length(Szloc)
     n  = count(Szloc)
     z  = sparse(findall(Szloc),collect(1:n),ones(T,n),m,n)
-    zT = sparse(collect(1:n),findall(Szloc),ones(T,n),n,m)
     
-    #TODO: there is probably a type stable way to fuse getS and getS_gpu
-    N  = blockdiag(x,y,z) |> CUDA.CUSPARSE.CuSparseMatrixCSC
-    Tr = blockdiag(xT,yT,zT) |> CUDA.CUSPARSE.CuSparseMatrixCSC
-    return (N = N, T = Tr)
+    S  = blockdiag(x,y,z) |> CUDA.CUSPARSE.CuSparseMatrixCSC
+    return S
 end
+#TODO: there is probably a type stable way to fuse getS and getS_gpu
 
 """
 C = getC(UpdateDielectric,m)\n.

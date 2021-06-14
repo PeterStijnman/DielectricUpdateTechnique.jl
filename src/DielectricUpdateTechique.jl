@@ -1,11 +1,11 @@
 module DielectricUpdateTechique
 
-#using CUDA
+using CUDA
 using FFTW
 using LinearAlgebra 
 using LinearMaps
 using SparseArrays
-
+using IterativeSolvers
 
 """
 caxpy!(c, a, x, y).\n

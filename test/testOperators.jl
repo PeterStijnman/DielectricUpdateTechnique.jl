@@ -20,5 +20,4 @@ zl = (p+1)*(q+1)*(r+2)
 Ig = DUTCH.createGreensFunctionsRestrictionOperators(nCells);
 dx,dy,dz = 2 .^(ceil.(Int,log2.(nCells.+2).+1))
 
-@test size(Ig.N) == (xl+yl+zl, dx*dy*dz*3)
-@test size(Ig.T) == (dx*dy*dz*3, xl+yl+zl)
+@test size(Ig) == (xl+yl+zl, dx*dy*dz*3)

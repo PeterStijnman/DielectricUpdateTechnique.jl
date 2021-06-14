@@ -64,19 +64,15 @@ imp = DUTCH.cellToYeeDielectric(vσ, vϵ, x, y, z)
 
 S = DUTCH.getS(loc)
 
-@test count(S.N .==1) == 24
-@test size(S.N) == ((length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1), 24)
-@test count(S.T .==1) == 24
-@test size(S.T) == (24, (length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1))
+@test count(S .== 1) == 24
+@test size(S) == ((length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1), 24)
 
-#=
-S = DUTCH.getS_gpu(loc) |> x -> (N = collect(x.N), T = collect(x.T))
 
-@test count(S.N .==1) == 24
-@test size(S.N) == ((length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1), 24)
-@test count(S.T .==1) == 24
-@test size(S.T) == (24, (length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1))
-=#
+S = DUTCH.getS_gpu(loc) |> collect
+
+@test count(S .== 1) == 24
+@test size(S) == ((length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1), 24)
+
 
 @test sum(DUTCH.getNUpdates(loc)) == 24
 

@@ -26,15 +26,11 @@ Internal function that computes the greens function.
 function _createGreensFunction(r,kb,a)
     # sommerfeld radiation condition
     scalarG = 3/(kb*a)^2*(sin(kb*a)/(kb*a)-cos(kb*a))
-
     # Green's function at r != 0
     G = @. exp.(-1im*kb*r)/(4*π*r)*scalarG
-
     # Green's function at r = 0
     G₀ = 3/(4*π*kb^2*a^3)*((1+1im*kb*a)*exp(-1im*kb*a)-1)
-
     G = circshift(G,floor.(Int,size(G)./2))
-
     G[1,1,1] = G₀
     return fft(G)
 end
@@ -56,12 +52,17 @@ Using the Green's function and contrast source we compute the vector potential.\
 a = ∫GχEdV which is computed using an FFT.\n
 """
 function _greensFunctionTimesContrastSource!(a,G,χ,E,A,Ig,Er,planfft,planifft)
-    mul!(Er,Ig.T,E) # move E to larger domain for fft
-    A .= χ.*reshape(Er,size(G)...,3) # multiply with the contrast
-    planfft*A # do the fft of the contrast source
-    @. A = G*A # multiply the green's function with the contrast source in freq domain
-    planifft*A # ifft
-    mul!(a,Ig.N,vec(A)) # map to smaller domain again
+    # move E to larger domain for fft
+    mul!(Er,Transpose(Ig),E) 
+    # multiply with the contrast
+    A .= χ.*reshape(Er,size(G)...,3) 
+    # do the fft of the contrast source (χ.*E)
+    planfft*A 
+    # multiply the green's function with the contrast source in freq domain
+    @. A = G*A 
+    planifft*A
+    # map to smaller domain again
+    mul!(a,Ig,vec(A)) 
 end
 
 """
@@ -101,22 +102,6 @@ function ETotalMinEScatteredForResidual!(v,eT,a,A,G,χ,Ig,AToE,efft,planfft,plan
 end
 
 """
-libraryMatrixTimesCurrentDensity!(JContrast,nUpdates,jv,eI,S,tmp,efft,G,A,w,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq).\n
-calculate the scattered electric field given the current density.\n
-"""
-function libraryMatrixTimesCurrentDensity!(JContrast,jv,eI,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq)
-    vInputTup = -JContrast |> cu 
-
-    VIE.setSourceValuesInDomain!(jv,eI,vInputTup,S)
-    #from source in E incident to the actual incident electric field
-    VIE.JIncToEInc!(eI,a,A,G,χ,Ig,AToE,efft,pfft,pifft,scaling)
-    #compute total electric field
-    VIE.cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq)
-    return x
-end #TODO: check if cpu version/collect are required
-
-
-"""
 setSourceValuesInDomain!(jv,eI,v,S)\n
 will set the current density values (jv's) to -v\n
 Using the S matrix these are placed into the incident electric field.\n
@@ -125,8 +110,24 @@ function setSourceValuesInDomain!(jv,eI,v,S)
     # set source values to the vector we are multiplying A with
     jv .= -one(ComplexF32).*v
     # set the source values into the incident electric field (will be equal to Jinc before the function JIncToEinc!)
-    mul!(eI,S.N,jv)
+    mul!(eI,S,jv)
 end
+
+"""
+libraryMatrixTimesCurrentDensity!(JContrast,nUpdates,jv,eI,S,tmp,efft,G,A,w,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq).\n
+calculate the scattered electric field given the current density.\n
+"""
+function libraryMatrixTimesCurrentDensity!(JContrast,jv,eI,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq)
+    vInputTup = -JContrast |> cu 
+
+    setSourceValuesInDomain!(jv,eI,vInputTup,S)
+    #from source in E incident to the actual incident electric field
+    JIncToEInc!(eI,a,A,G,χ,Ig,AToE,efft,pfft,pifft,scaling)
+    #compute total electric field
+    cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq)
+    return x
+end #TODO: check if cpu version/collect are required
+
 
 
 """
@@ -141,11 +142,9 @@ function wrapperVIE!(output,jv,eI,C,vInput,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,
     JIncToEInc!(eI,a,A,G,χ,Ig,AToE,efft,pfft,pifft,scaling)
     # solve for the field inside the patient anatomy
     cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq)
-    # calculate the (v - CSZv) vector for the minimization process
-    
-    mul!(output,S.T,x)
+    # calculate the (v - CSZv) vector for the minimization process    
+    mul!(output,Transpose(S),x)
     @. output *= C
-    
-    axpy!(one(ComplexF32),vInput,output) # output = vInput - CSZvInput
-    #output += vInput
+    # output = vInput - CSZvInput
+    axpy!(one(ComplexF32),vInput,output) 
 end

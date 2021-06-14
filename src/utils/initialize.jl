@@ -202,10 +202,10 @@ end
 """
 b,norm(b) = getb(CVector,SVector,Einc).\n
 Calculates the vector b for the minimaztion of ||b-Ax||_2^2.\n
+Einc is the electric field on the yee grid ordered in a vector by Einc_x,Einc_y,Einc_z.\n
 Returns the normalized vector b and a float to rescale the output of the minimization.\n
 """
-function getb(CVector,SVector,yeeTup)
-    Einc = vcat(yeeTup[:Einc][1][:],yeeTup[:Einc][2][:],yeeTup[:Einc][3][:]);
+function getb(CVector,SVector,Einc)
     b = CVector.*Einc[SVector[1]];
     nb = norm(b);
     bnormalized = b./nb;

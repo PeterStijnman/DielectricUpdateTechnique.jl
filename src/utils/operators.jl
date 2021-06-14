@@ -75,7 +75,6 @@ Ig = createGreensFunctionsRestrictionOperators(nCells)\n
 These operators are used to restrict the output of ∫GχEdV.\n
 This integral is computed using an FFT on a domain that is larger the number of cells.\n
 Therefore, the output of these should be restricted to the correct Yee cell grid.\n
-Ig = (N, T), normal and transpose matrix.\n
 """
 function createGreensFunctionsRestrictionOperators(nCells)
     T = ComplexF32;
@@ -96,15 +95,7 @@ function createGreensFunctionsRestrictionOperators(nCells)
     Iz = spdiagm(r+2,dz,0=>ones(T,r+2))
     z = (Iz ⊗ (Iy ⊗ Ix))
 
-    N = blockdiag(x,y,z)
-
-    xT = copy(x')
-    yT = copy(y')
-    zT = copy(z')
-    
-    Tr = blockdiag(xT,yT,zT)
-
-    return (N = N, T = Tr)
+    return blockdiag(x,y,z)
 end
 
 """
@@ -112,7 +103,6 @@ Ig = createGreensFunctionsRestrictionOperators_gpu(nCells)\n
 These operators are used to restrict the output of ∫GχEdV.\n
 This integral is computed using an FFT on a domain that is larger the number of 2*cells.\n
 Therefore, the output of these should be restricted to the correct Yee cell grid.\n
-Ig = (N, T), normal and transpose matrix on the gpu.\n
 """
 function createGreensFunctionsRestrictionOperators_gpu(nCells)
     T = ComplexF32;
@@ -133,13 +123,7 @@ function createGreensFunctionsRestrictionOperators_gpu(nCells)
     Iz = spdiagm(r+2,dz,0=>ones(T,r+2))
     z = (Iz ⊗ (Iy ⊗ Ix))
 
-    N = blockdiag(x,y,z) |> CUDA.CUSPARSE.CuSparseMatrixCSC
-
-    xT = copy(x')
-    yT = copy(y')
-    zT = copy(z')
+    Ig = blockdiag(x,y,z) |> CUDA.CUSPARSE.CuSparseMatrixCSC
     
-    Tr = blockdiag(xT,yT,zT) |> CUDA.CUSPARSE.CuSparseMatrixCSC
-
-    return (N = N, T = Tr)
+    return Ig
 end
