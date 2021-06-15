@@ -1,4 +1,49 @@
 function create_problem(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolution)
+    m = getConstants(frequency)
+
+    p,q,r = size(BG_σ);
+    nCells = [p-2,q-2,r-2];
+    a = minimum(resolution)/2;
+    scaling = -1im*m.μ₀*m.ω/(m.kb^2);
+    
+
+    x_axis = 0f0:resolution[1]:p*resolution[1];
+    y_axis = 0f0:resolution[2]:q*resolution[2];
+    z_axis = 0f0:resolution[3]:r*resolution[3];
+
+    BGDielectric = cellToYeeDielectric(BG_σ, BG_ϵ, x_axis, y_axis, z_axis);
+    UpdateDielectric = cellToYeeDielectric(Update_σ, Update_ϵ, x_axis, y_axis, z_axis);
+    DiffDielectric, logicLocations = computeUpdateMaps(BGDielectric, UpdateDielectric);
+
+    #get the number of edges that need to be updated
+    nUpdates = getNUpdates(logicLocations);
+    
+    #operators
+    AToE = createSparseDifferenceOperators(nCells,resolution,m.kb);
+    Ig   = createGreensFunctionsRestrictionOperators(nCells);
+    G    = createGreensFunctions(nCells,resolution,m.kb);
+
+    #dielectric
+    χ = setDielectric(BGDielectric,m,nCells);
+    
+    #allocate memory for inplace operations
+    jv,eI,a,A,efft,pfft,pifft = allocateSpaceVIE(nCells,nUpdates);
+    x,p,r,rt,u,v,q,uq = allocateCGSVIE(nCells);
+    #get the sparse S matrix for each field component
+    S = getS(logicLocations); 
+    C = getC(DiffDielectric,m);
+
+    b,nb = getb(C,S,Einc)
+    
+    outputVIE = zeros(ComplexF32, sum(nUpdates));
+
+    LinearOp =  LinearMap{ComplexF32}(vecxyz-> catForVIE(outputVIE,jv,eI,C,vecxyz,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq),sum(nUpdates))
+    totalFieldsOP = LinearMap{ComplexF32}(J -> libraryMatrixTimesCurrentDensity!(J,jv,eI,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq),sum(nUpdates))
+
+    return (g_map = LinearOp, b_vector = b, norm_b = nb, scattered_electric_field_map = totalFieldsOP)
+end
+
+function create_problem_gpu(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolution)
     p,q,r = size(BG_σ);
     nCells = [p-2,q-2,r-2];
     a = minimum(resolution)/2;
@@ -6,9 +51,9 @@ function create_problem(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolutio
     
     m = getConstants(frequency)
 
-    x_axis = resolution[1]:resolution[1]:p*resolution[1];
-    y_axis = resolution[2]:resolution[2]:q*resolution[2];
-    z_axis = resolution[3]:resolution[3]:r*resolution[3];
+    x_axis = 0f0:resolution[1]:p*resolution[1];
+    y_axis = 0f0:resolution[2]:q*resolution[2];
+    z_axis = 0f0:resolution[3]:r*resolution[3];
 
     BGDielectric = cellToYeeDielectric(BG_σ, BG_ϵ, x_axis, y_axis, z_axis);
     UpdateDielectric = cellToYeeDielectric(Update_σ, Update_ϵ, x_axis, y_axis, z_axis);
@@ -37,7 +82,7 @@ function create_problem(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolutio
     outputVIE = CUDA.zeros(ComplexF32, sum(nUpdates));
 
     LinearOp =  LinearMap{ComplexF32}(vecxyz-> catForVIE_gpu(outputVIE,jv,eI,C,vecxyz,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq),sum(nUpdates))
-    totalFieldsOP = LinearMap{ComplexF32}(J -> libraryMatrixTimesCurrentDensity!(J,jv,eI,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq),sum(nUpdates))
+    totalFieldsOP = LinearMap{ComplexF32}(J -> libraryMatrixTimesCurrentDensity_gpu!(J,jv,eI,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq),sum(nUpdates))
 
     return (g_map = LinearOp, b_vector = b, norm_b = nb, scattered_electric_field_map = totalFieldsOP)
 end
