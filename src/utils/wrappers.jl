@@ -104,3 +104,35 @@ function solve_problem(problem; verbose = true, max_iterations = 100, restart = 
     scattered_electric_field  = problem.scattered_electric_field_map*scattered_current_density
     return scattered_current_density, scattered_electric_field
 end
+
+function calculate_electric_field_vacuum_to_dielectric(σ,ϵr,res,source,frequency)
+    m = getConstants(frequency);
+    np,nq,nr   = size(σ);
+    nCells  = [np-2,nq-2,nr-2];
+    a       = 5f-4 #resolution/2
+    divωϵim = 1/(1im*m.ω*m.ϵ₀);
+
+    x_axis = 0:res[1]:np*res[1]
+    y_axis = 0:res[2]:nq*res[2]
+    z_axis = 0:res[3]:nr*res[3]
+    
+    Dielectric = cellToYeeDielectric(σ,ϵr,x_axis,y_axis,z_axis);
+
+    #dielectric
+    χ = setDielectric(Dielectric,m,nCells);
+    # operators
+    AToE = createSparseDifferenceOperators(nCells,res,m.kb);
+    Ig   = createGreensFunctionsRestrictionOperators(nCells);
+    G = createGreensFunctions(nCells,res,m.kb);
+    #allocate memory for the VIE method
+    _,_,a,A,efft,pfft,pifft = allocateSpaceVIE(nCells,[1,0,0]);
+    x,p,r,rt,u,v,q,uq = allocateCGSVIE(nCells);
+    
+    eI = copy(source);
+    #from source in E incident to the actual incident electric field
+    JIncToEInc!(eI,a,A,G,χ,Ig,AToE,efft,pfft,pifft,divωϵim);
+    #compute total electric field
+    cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq,tol=1f-18,maxit = 40)
+
+    return x
+end

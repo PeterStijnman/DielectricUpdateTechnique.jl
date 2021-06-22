@@ -1,3 +1,4 @@
+using Core: ComplexF32
 import DielectricUpdateTechique as DUTCH
 using Test
 
@@ -17,17 +18,17 @@ Update_σ = copy(BG_σ);
 Update_ϵr = copy(BG_ϵr);
 
 radius_sphere = 2f-3;
-Update_σ[r .< radius_sphere] .= 25;
+Update_σ[r .< radius_sphere] .= 5;
 Update_ϵr[r .< radius_sphere] .= 1;
 
+frequency = 300f6;
+#=
 x_axis = -6.5f-3:1f-3:6.5f-3
 y_axis = -6.5f-3:1f-3:6.5f-3
 z_axis = -6.5f-3:1f-3:6.5f-3
 
 BGDielectric = DUTCH.cellToYeeDielectric(BG_σ,BG_ϵr,x_axis,y_axis,z_axis);
 UpdateDielectric = DUTCH.cellToYeeDielectric(Update_σ,Update_ϵr,x_axis,y_axis,z_axis);
-
-frequency = 300f6;
 m = DUTCH.getConstants(frequency);
 
 # incident electric field 
@@ -50,10 +51,16 @@ x,p,r,rt,u,v,q,uq = DUTCH.allocateCGSVIE(nCells);
 #from source in E incident to the actual incident electric field
 DUTCH.JIncToEInc!(eI,a,A,G,χ,Ig,AToE,efft,pfft,pifft,divωϵim);
 #compute total electric field
-DUTCH.cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq,tol=1f-18,maxit = 18)
+DUTCH.cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq,tol=1f-18,maxit = 40)
 
 Einc = x;
-
+=#
+p,q,r   = size(BG_σ);
+source = zeros(ComplexF32,p*(q-1)*(r-1)+(p-1)*q*(r-1)+(p-1)*(q-1)*r);
+source[5] = 1f0 + 0f0im;
+res = [1f-3,1f-3,1f-3];
+Einc = DUTCH.calculate_electric_field_vacuum_to_dielectric(BG_σ,BG_ϵr,res,source,frequency);
+Etot = DUTCH.calculate_electric_field_vacuum_to_dielectric(Update_σ,Update_ϵr,res,source,frequency);
 # total electric field old fashioned method 
 p,q,r   = size(BG_σ);
 nCells  = [p-2,q-2,r-2];
@@ -74,15 +81,19 @@ x,p,r,rt,u,v,q,uq = DUTCH.allocateCGSVIE(nCells);
 #from source in E incident to the actual incident electric field
 DUTCH.JIncToEInc!(eI,a,A,G,χ,Ig,AToE,efft,pfft,pifft,divωϵim);
 #compute total electric field
-DUTCH.cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq,tol=1f-18,maxit = 18)
+DUTCH.cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq,tol=1f-18,maxit = 40)
 
 Etot = x;
 
 # total electric field with update 
 prob = DUTCH.create_problem(BG_σ,BG_ϵr,Update_σ,Update_ϵr,Einc,frequency,res);
 
-Jsc,Esc = DUTCH.solve_problem(prob);
+Jsc,Esc = DUTCH.solve_problem(prob,tol=1f-6);
 
 Etot_update = Einc + Esc;
 
+# check mismatch between scattered e-field from 2 VIE simulations and the update calculation.
+err = DUTCH.norm(Etot-Einc-Esc)
+norm_Esc = DUTCH.norm(Esc)
 
+@test err/norm_Esc < 0.05
