@@ -1,3 +1,8 @@
+"""
+prob = create_problem(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolution).\n
+supplying the background and desired dielectrics, the incident electric field, frequency and resolution\n 
+this will create a problem tuple that can be solved by solve_problem().\n
+"""
 function create_problem(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolution)
     m = getConstants(frequency)
 
@@ -43,6 +48,11 @@ function create_problem(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolutio
     return (g_map = LinearOp, b_vector = b, norm_b = nb, scattered_electric_field_map = totalFieldsOP)
 end
 
+"""
+prob = create_problem(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolution).\n
+supplying the background and desired dielectrics, the incident electric field, frequency and resolution\n 
+this will create a problem tuple that can be solved using a GPU by solve_problem().\n
+"""
 function create_problem_gpu(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolution)
     p,q,r = size(BG_σ);
     nCells = [p-2,q-2,r-2];
@@ -105,11 +115,16 @@ function solve_problem(problem; verbose = true, max_iterations = 100, restart = 
     return scattered_current_density, scattered_electric_field
 end
 
+"""
+electric_field = calculate_electric_field_vacuum_to_dielectric(σ,ϵr,res,source,frequency).\n
+this will calculate an electric field distribution using the VIE method.\n 
+Warning: this is not stable for very high conductivities or high permittivities.\n
+"""
 function calculate_electric_field_vacuum_to_dielectric(σ,ϵr,res,source,frequency)
     m = getConstants(frequency);
     np,nq,nr   = size(σ);
     nCells  = [np-2,nq-2,nr-2];
-    a       = 5f-4 #resolution/2
+    a       = minimum(res)/2f0;
     divωϵim = 1/(1im*m.ω*m.ϵ₀);
 
     x_axis = 0:res[1]:np*res[1]
@@ -132,7 +147,7 @@ function calculate_electric_field_vacuum_to_dielectric(σ,ϵr,res,source,frequen
     #from source in E incident to the actual incident electric field
     JIncToEInc!(eI,a,A,G,χ,Ig,AToE,efft,pfft,pifft,divωϵim);
     #compute total electric field
-    cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq,tol=1f-18,maxit = 40)
+    cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq,tol=1f-18,maxit = 120)
 
     return x
 end
