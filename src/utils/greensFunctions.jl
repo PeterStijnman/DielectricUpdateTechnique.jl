@@ -118,6 +118,21 @@ libraryMatrixTimesCurrentDensity!(JContrast,nUpdates,jv,eI,S,tmp,efft,G,A,w,χ,a
 calculate the scattered electric field given the current density.\n
 """
 function libraryMatrixTimesCurrentDensity!(JContrast,jv,eI,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq)
+    vInputTup = -JContrast
+
+    setSourceValuesInDomain!(jv,eI,vInputTup,S)
+    #from source in E incident to the actual incident electric field
+    JIncToEInc!(eI,a,A,G,χ,Ig,AToE,efft,pfft,pifft,scaling)
+    #compute total electric field
+    cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq)
+    return x
+end 
+
+"""
+libraryMatrixTimesCurrentDensity_gpu!(JContrast,nUpdates,jv,eI,S,tmp,efft,G,A,w,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq).\n
+calculate the scattered electric field given the current density.\n
+"""
+function libraryMatrixTimesCurrentDensity_gpu!(JContrast,jv,eI,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq)
     vInputTup = -JContrast |> cu 
 
     setSourceValuesInDomain!(jv,eI,vInputTup,S)
