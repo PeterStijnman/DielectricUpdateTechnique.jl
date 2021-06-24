@@ -155,6 +155,7 @@ Where the resulting electric fields are:'
 In general the update method requires the conductivity and permittvity of the background and desired scenario, the electric field of a base simulation that included some source and the background dielectric, the frequency of the incident electric field, and the uniform resolution of the grid.
 
 ```julia 
+import DielectricUpdateTechique as DUTCH
 prob = DUTCH.create_problem(BG_σ,BG_ϵr,Update_σ,Update_ϵr,Einc,frequency,res);
 ```
 
