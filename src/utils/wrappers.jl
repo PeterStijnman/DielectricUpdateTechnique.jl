@@ -1,4 +1,59 @@
+"""
+prob = create_problem(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolution).\n
+supplying the background and desired dielectrics, the incident electric field, frequency and resolution\n 
+this will create a problem tuple that can be solved by solve_problem().\n
+"""
 function create_problem(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolution)
+    m = getConstants(frequency)
+
+    p,q,r = size(BG_σ);
+    nCells = [p-2,q-2,r-2];
+    a = minimum(resolution)/2;
+    scaling = -1im*m.μ₀*m.ω/(m.kb^2);
+    
+
+    x_axis = 0f0:resolution[1]:p*resolution[1];
+    y_axis = 0f0:resolution[2]:q*resolution[2];
+    z_axis = 0f0:resolution[3]:r*resolution[3];
+
+    BGDielectric = cellToYeeDielectric(BG_σ, BG_ϵ, x_axis, y_axis, z_axis);
+    UpdateDielectric = cellToYeeDielectric(Update_σ, Update_ϵ, x_axis, y_axis, z_axis);
+    DiffDielectric, logicLocations = computeUpdateMaps(BGDielectric, UpdateDielectric);
+
+    #get the number of edges that need to be updated
+    nUpdates = getNUpdates(logicLocations);
+    
+    #operators
+    AToE = createSparseDifferenceOperators(nCells,resolution,m.kb);
+    Ig   = createGreensFunctionsRestrictionOperators(nCells);
+    G    = createGreensFunctions(nCells,resolution,m.kb);
+
+    #dielectric
+    χ = setDielectric(BGDielectric,m,nCells);
+    
+    #allocate memory for inplace operations
+    jv,eI,a,A,efft,pfft,pifft = allocateSpaceVIE(nCells,nUpdates);
+    x,p,r,rt,u,v,q,uq = allocateCGSVIE(nCells);
+    #get the sparse S matrix for each field component
+    S = getS(logicLocations); 
+    C = getC(DiffDielectric,m);
+
+    b,nb = getb(C,S,Einc)
+    
+    outputVIE = zeros(ComplexF32, sum(nUpdates));
+
+    LinearOp =  LinearMap{ComplexF32}(vecxyz-> catForVIE(outputVIE,jv,eI,C,vecxyz,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq),sum(nUpdates))
+    totalFieldsOP = LinearMap{ComplexF32}(J -> libraryMatrixTimesCurrentDensity!(J,jv,eI,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq),sum(nUpdates))
+
+    return (g_map = LinearOp, b_vector = b, norm_b = nb, scattered_electric_field_map = totalFieldsOP)
+end
+
+"""
+prob = create_problem(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolution).\n
+supplying the background and desired dielectrics, the incident electric field, frequency and resolution\n 
+this will create a problem tuple that can be solved using a GPU by solve_problem().\n
+"""
+function create_problem_gpu(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolution)
     p,q,r = size(BG_σ);
     nCells = [p-2,q-2,r-2];
     a = minimum(resolution)/2;
@@ -6,9 +61,9 @@ function create_problem(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolutio
     
     m = getConstants(frequency)
 
-    x_axis = resolution[1]:resolution[1]:p*resolution[1];
-    y_axis = resolution[2]:resolution[2]:q*resolution[2];
-    z_axis = resolution[3]:resolution[3]:r*resolution[3];
+    x_axis = 0f0:resolution[1]:p*resolution[1];
+    y_axis = 0f0:resolution[2]:q*resolution[2];
+    z_axis = 0f0:resolution[3]:r*resolution[3];
 
     BGDielectric = cellToYeeDielectric(BG_σ, BG_ϵ, x_axis, y_axis, z_axis);
     UpdateDielectric = cellToYeeDielectric(Update_σ, Update_ϵ, x_axis, y_axis, z_axis);
@@ -37,7 +92,7 @@ function create_problem(BG_σ,BG_ϵ,Update_σ,Update_ϵ,Einc,frequency,resolutio
     outputVIE = CUDA.zeros(ComplexF32, sum(nUpdates));
 
     LinearOp =  LinearMap{ComplexF32}(vecxyz-> catForVIE_gpu(outputVIE,jv,eI,C,vecxyz,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq),sum(nUpdates))
-    totalFieldsOP = LinearMap{ComplexF32}(J -> libraryMatrixTimesCurrentDensity!(J,jv,eI,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq),sum(nUpdates))
+    totalFieldsOP = LinearMap{ComplexF32}(J -> libraryMatrixTimesCurrentDensity_gpu!(J,jv,eI,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,pifft,x,p,r,rt,u,v,q,uq),sum(nUpdates))
 
     return (g_map = LinearOp, b_vector = b, norm_b = nb, scattered_electric_field_map = totalFieldsOP)
 end
@@ -58,4 +113,41 @@ function solve_problem(problem; verbose = true, max_iterations = 100, restart = 
     # we calculate the scattered electric field that is created by the dielectric update that is performed
     scattered_electric_field  = problem.scattered_electric_field_map*scattered_current_density
     return scattered_current_density, scattered_electric_field
+end
+
+"""
+electric_field = calculate_electric_field_vacuum_to_dielectric(σ,ϵr,res,source,frequency).\n
+this will calculate an electric field distribution using the VIE method.\n 
+Warning: this is not stable for very high conductivities or high permittivities.\n
+"""
+function calculate_electric_field_vacuum_to_dielectric(σ,ϵr,res,source,frequency)
+    m = getConstants(frequency);
+    np,nq,nr   = size(σ);
+    nCells  = [np-2,nq-2,nr-2];
+    a       = minimum(res)/2f0;
+    divωϵim = 1/(1im*m.ω*m.ϵ₀);
+
+    x_axis = 0:res[1]:np*res[1]
+    y_axis = 0:res[2]:nq*res[2]
+    z_axis = 0:res[3]:nr*res[3]
+    
+    Dielectric = cellToYeeDielectric(σ,ϵr,x_axis,y_axis,z_axis);
+
+    #dielectric
+    χ = setDielectric(Dielectric,m,nCells);
+    # operators
+    AToE = createSparseDifferenceOperators(nCells,res,m.kb);
+    Ig   = createGreensFunctionsRestrictionOperators(nCells);
+    G = createGreensFunctions(nCells,res,m.kb);
+    #allocate memory for the VIE method
+    _,_,a,A,efft,pfft,pifft = allocateSpaceVIE(nCells,[1,0,0]);
+    x,p,r,rt,u,v,q,uq = allocateCGSVIE(nCells);
+    
+    eI = copy(source);
+    #from source in E incident to the actual incident electric field
+    JIncToEInc!(eI,a,A,G,χ,Ig,AToE,efft,pfft,pifft,divωϵim);
+    #compute total electric field
+    cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq,tol=1f-18,maxit = 120)
+
+    return x
 end
