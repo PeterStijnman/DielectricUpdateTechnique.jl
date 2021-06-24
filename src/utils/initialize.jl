@@ -206,7 +206,7 @@ Einc is the electric field on the yee grid ordered in a vector by Einc_x,Einc_y,
 Returns the normalized vector b and a float to rescale the output of the minimization.\n
 """
 function getb(CVector,SVector,Einc)
-    b = CVector.*Einc[SVector[1]];
+    b = CVector.*(Transpose(SVector)*Einc);
     nb = norm(b);
     bnormalized = b./nb;
     return bnormalized,nb
