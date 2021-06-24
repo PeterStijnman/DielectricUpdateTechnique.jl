@@ -59,7 +59,7 @@ Update_ϵr[hp+6:hp+8,hq-6:hq+6,hr-6:hr+6] .= 20;
 
 The result should look something like:
 
-![alt text](https://github.com/PeterStijnman/DielectricUpdateTechnique.jl/tree/master/md_images/dielectric_cubes.png "Dielectric background -> update")
+![alt text](md_images/dielectric_cubes.png "Dielectric background -> update")
 
 Now in order to create a base simulation that we can use our update method for we need some source.
 
@@ -88,7 +88,8 @@ Etot_update = Einc + Esc;
 ```
 
 The only thing left to do is compare the electric fields, looking at the center slice we find:
-![alt text](https://github.com/PeterStijnman/DielectricUpdateTechnique.jl/tree/master/md_images/electric_field_cubes.png "Slice view of the electric fields")
+
+![alt text](md_images/electric_field_cubes.png "Slice view of the electric fields")
 
 Here we can observe that the change in dielectric also changes the electric field. Furthermore, the total field from the standard solver and the update method provide the same electric field.
 
@@ -121,7 +122,8 @@ Update_ϵr[radius .< radius_sphere] .= 300;
 ```
 
 The resulting dielectric scenarios:
-![alt text](https://github.com/PeterStijnman/DielectricUpdateTechnique.jl/tree/master/md_images/dielectric_spheres.png "Dielectric background -> update")
+
+![alt text](md_images/dielectric_spheres.png "Dielectric background -> update")
 
 We define a new source 
 
@@ -145,8 +147,9 @@ Jsc,Esc = DUTCH.solve_problem(prob,tol=1f-6);
 Etot_update = Einc + Esc;
 ```
 
-Where the resulting electric fields are:
-![alt text](https://github.com/PeterStijnman/DielectricUpdateTechnique.jl/tree/master/md_images/electric_field_spheres.png "Slice view of the electric fields")
+Where the resulting electric fields are:'
+
+![alt text](md_images/electric_field_spheres.png "Slice view of the electric fields")
 
 ## Usage
 In general the update method requires the conductivity and permittvity of the background and desired scenario, the electric field of a base simulation that included some source and the background dielectric, the frequency of the incident electric field, and the uniform resolution of the grid.
