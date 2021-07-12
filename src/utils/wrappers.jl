@@ -141,13 +141,18 @@ function calculate_electric_field_vacuum_to_dielectric(σ,ϵr,res,source,frequen
     G = createGreensFunctions(nCells,res,m.kb);
     #allocate memory for the VIE method
     _,_,a,A,efft,pfft,pifft = allocateSpaceVIE(nCells,[1,0,0]);
-    x,p,r,rt,u,v,q,uq = allocateCGSVIE(nCells);
+    #x,p,r,rt,u,v,q,uq = allocateCGSVIE(nCells);
     
     eI = copy(source);
     #from source in E incident to the actual incident electric field
     JIncToEInc!(eI,a,A,G,χ,Ig,AToE,efft,pfft,pifft,divωϵim);
+    
+    #create map for VIE 
+    v_out = zeros(ComplexF32,length(eI))
+    VIE_map = LinearMap{ComplexF32}(x_in -> ETotalMinEScattered_map!(v_out,x_in,a,A,G,χ,Ig,AToE,efft,pfft,pifft,one(ComplexF32)), length(v_out))
+    
     #compute total electric field
-    cgs_efield!(eI,efft,G,A,χ,a,AToE,Ig,pfft,pifft,x,p,r,rt,u,v,q,uq,tol=1f-18,maxit = 120)
+    x = IterativeSolvers.gmres(VIE_map,eI,verbose=true,restart = 50,maxiter=50)
 
     return x
 end

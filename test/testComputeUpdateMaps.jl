@@ -67,12 +67,12 @@ S = DUTCH.getS(loc)
 @test count(S .== 1) == 24
 @test size(S) == ((length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1), 24)
 
-
+#=
 S = DUTCH.getS_gpu(loc) |> collect
 
 @test count(S .== 1) == 24
 @test size(S) == ((length(x)-1)*(length(y)-2)*(length(z)-2) + (length(x)-2)*(length(y)-1)*(length(z)-2) + (length(x)-2)*(length(y)-2)*(length(z)-1), 24)
-
+=#
 
 @test sum(DUTCH.getNUpdates(loc)) == 24
 

@@ -1,4 +1,3 @@
-using Core: ComplexF32
 import DielectricUpdateTechique as DUTCH
 using Test
 
@@ -50,7 +49,7 @@ norm_Esc = DUTCH.norm(Esc);
 @test err/norm_Esc < 0.07
 
 # set on more sources
-source[2822] = 1f0 + 0f0im;
+source[2822] = 0f0 + 2f-1im;
 
 # calculate the incident and total electric field starting from vacuum surrounding.
 Einc = DUTCH.calculate_electric_field_vacuum_to_dielectric(BG_σ,BG_ϵr,res,source,frequency);

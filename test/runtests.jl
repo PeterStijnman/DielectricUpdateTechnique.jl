@@ -9,5 +9,6 @@ using Test
     include("testComputeUpdateMaps.jl")
     include("testOperators.jl")
     include("testInit.jl")
+    include("testSolver.jl")
 end
 

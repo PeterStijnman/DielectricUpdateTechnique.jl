@@ -163,3 +163,14 @@ function wrapperVIE!(output,jv,eI,C,vInput,S,efft,G,A,χ,a,AToE,Ig,scaling,pfft,
     # output = vInput - CSZvInput
     axpy!(one(ComplexF32),vInput,output) 
 end
+
+"""
+ETotalMinEScattered_map!(v,eT,a,A,G,χ,Ig,AToE,efft,planfft,planifft,scalar).\n
+used as a map to solve for the total electric field.\n
+"""
+function ETotalMinEScattered_map!(v,eT,a,A,G,χ,Ig,AToE,efft,planfft,planifft,scalar)
+    copyto!(v,eT)
+    _greensFunctionTimesContrastSource!(a,G,χ.patient,v,A,Ig,efft,planfft,planifft)
+    mul!(v,AToE,a,-scalar,scalar)
+    return v
+end
