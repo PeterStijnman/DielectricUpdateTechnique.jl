@@ -8,7 +8,7 @@ z = collect(0:1e-3:3e-3)
 vσ = rand(3, 3, 3);
 vϵ = rand(3, 3, 3);
 
-yeeTup = DUTCH.cellToYeeDielectric(vσ, vϵ, x, y, z)
+yeeTup = DUTCH.cell_to_yee_dielectric(vσ, vϵ, x, y, z)
 
 @test size(yeeTup[:σˣ]) == (3, 4, 4)
 @test size(yeeTup[:σʸ]) == (4, 3, 4)

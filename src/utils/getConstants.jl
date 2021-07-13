@@ -1,5 +1,5 @@
 """
-constants = getConstants(freq).\n
+constants = get_constants(freq).\n
 freq is the frequency of interest of your simulation.\n
 contants include:
 c  : lightspeed\n
@@ -10,7 +10,7 @@ f₀ : frequency in Hz\n
 kb : wavenumber of vacuum\n
 λ  : wavelength in vacuum\n
 """
-function getConstants(freq)
+function get_constants(freq)
     c  = 299792458 #apparently this is what sim4life uses
     μ₀ = 4f-7*π
     ϵ₀ = 1/(c^2*μ₀)

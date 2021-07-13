@@ -3,7 +3,7 @@ using Test
 
 nCells = [5,12,10];
 nUpdates = [4,4,4]
-jv,eI,a,A,efft,pfft,pifft = DUTCH.allocateSpaceVIE(nCells,nUpdates)
+jv,eI,a,A,efft,pfft,pifft = DUTCH._allocate_memory_for_volume_integral_equation(nCells,nUpdates)
 
 tl = (nCells[1]+2)*(nCells[2]+1)*(nCells[3]+1) + (nCells[1]+1)*(nCells[2]+2)*(nCells[3]+1) + (nCells[1]+1)*(nCells[2]+1)*(nCells[3]+2)
 
@@ -18,7 +18,7 @@ tl = (nCells[1]+2)*(nCells[2]+1)*(nCells[3]+1) + (nCells[1]+1)*(nCells[2]+2)*(nC
 @test length(efft) == 16*32*32*3
 @test abs(sum(efft)) == 0
 
-x,p,r,rt,u,v,q,uq = DUTCH.allocateCGSVIE(nCells)
+x,p,r,rt,u,v,q,uq = DUTCH._allocate_memory_cgs(nCells)
 
 @test length(x) == tl
 @test abs(sum(x)) == 0
