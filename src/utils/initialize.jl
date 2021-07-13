@@ -237,3 +237,71 @@ function _allocate_memory_cgs_gpu(number_of_cells)
 
     return x, p, r, rt, u, v, q, uq
 end
+
+#=
+some code not directly required for the method that this package was developed for.
+=#
+"""
+magnetic_soucres, fft_tmp, magnetic_vector_potential_1d, magnetic_vector_potential_3d, planfft, planifft = _allocate_memory_for_volume_integral_equation_magnetic_fields(number_of_cells)\n
+allocates arrays that are used for the volume integral equation method.\n
+"""
+function _allocate_memory_for_volume_integral_equation_magnetic_fields(number_of_cells)
+    T = ComplexF32
+
+    p, q, r = number_of_cells
+    dx, dy, dz = 2 .^(ceil.(Int, log2.(number_of_cells.+2).+1))
+    # for H fields
+    xl = (p+1)*(q+2)*(r+2)
+    yl = (p+2)*(q+1)*(r+2)
+    zl = (p+2)*(q+2)*(r+1)
+
+    tl = xl + yl + zl 
+
+    #incident electric fields
+    magnetic_soucres = zeros(T, tl)
+    
+    #vector potentials
+    magnetic_vector_potential_1d = zeros(T, tl)
+
+    fft_tmp = zeros(T, dx*dy*dz*3)
+    magnetic_vector_potential_3d = zeros(T, dx, dy, dz, 3)
+    #planning for fft and ifft
+    planfft = VIE.plan_fft!(F, (1, 2, 3))
+    planifft = VIE.plan_ifft!(F, (1, 2, 3))
+    
+    return magnetic_soucres, fft_tmp, magnetic_vector_potential_1d, magnetic_vector_potential_3d, planfft, planifft
+end
+
+"""
+magnetic_soucres, fft_tmp, magnetic_vector_potential_1d, magnetic_vector_potential_3d, planfft, planifft = _allocate_memory_for_volume_integral_equation_magnetic_fields_gpu(number_of_cells)\n
+allocates arrays that are used for the volume integral equation method.\n
+"""
+function _allocate_memory_for_volume_integral_equation_magnetic_fields_gpu(number_of_cells)
+    T = ComplexF32
+
+    p, q, r = number_of_cells
+    dx, dy, dz = 2 .^(ceil.(Int, log2.(number_of_cells.+2).+1))
+    # for H fields
+    xl = (p+1)*(q+2)*(r+2)
+    yl = (p+2)*(q+1)*(r+2)
+    zl = (p+2)*(q+2)*(r+1)
+
+    tl = xl + yl + zl 
+
+    #incident electric fields
+    magnetic_soucres = CUDA.zeros(T, tl)
+    
+    #vector potentials
+    magnetic_vector_potential_1d = CUDA.zeros(T, tl)
+    
+    #fft temporaries
+    fft_tmp = CUDA.zeros(T, dx*dy*dz*3)
+    magnetic_vector_potential_3d = CUDA.zeros(T, dx, dy, dz, 3)
+
+    #planning for fft and ifft
+    planfft = VIE.plan_fft!(F, (1, 2, 3))
+    planifft = VIE.plan_ifft!(F, (1, 2, 3))
+    
+    return magnetic_soucres, fft_tmp, magnetic_vector_potential_1d, magnetic_vector_potential_3d, planfft, planifft
+end
+
