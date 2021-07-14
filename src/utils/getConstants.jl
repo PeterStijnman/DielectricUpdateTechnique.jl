@@ -15,7 +15,7 @@ function get_constants(freq)
     μ₀ = 4f-7*π
     ϵ₀ = 1/(c^2*μ₀)
     f₀ = freq #round is for the fact that i set the 3T and 7T freq to 128 and 298 MHz in sim4life
-    ω  = 2*(π*f₀)
+    ω  = 2*(π*f₀) |> Float32
     kb = ω/c
     λ  = c/f₀
     return (;c, μ₀, ϵ₀, f₀, ω, kb, λ)

@@ -266,8 +266,8 @@ function _allocate_memory_for_volume_integral_equation_magnetic_fields(number_of
     fft_tmp = zeros(T, dx*dy*dz*3)
     magnetic_vector_potential_3d = zeros(T, dx, dy, dz, 3)
     #planning for fft and ifft
-    planfft = VIE.plan_fft!(F, (1, 2, 3))
-    planifft = VIE.plan_ifft!(F, (1, 2, 3))
+    planfft = plan_fft!(magnetic_vector_potential_3d, (1, 2, 3))
+    planifft = plan_ifft!(magnetic_vector_potential_3d, (1, 2, 3))
     
     return magnetic_soucres, fft_tmp, magnetic_vector_potential_1d, magnetic_vector_potential_3d, planfft, planifft
 end
@@ -299,8 +299,8 @@ function _allocate_memory_for_volume_integral_equation_magnetic_fields_gpu(numbe
     magnetic_vector_potential_3d = CUDA.zeros(T, dx, dy, dz, 3)
 
     #planning for fft and ifft
-    planfft = VIE.plan_fft!(F, (1, 2, 3))
-    planifft = VIE.plan_ifft!(F, (1, 2, 3))
+    planfft = plan_fft!(magnetic_vector_potential_3d, (1, 2, 3))
+    planifft = plan_ifft!(magnetic_vector_potential_3d, (1, 2, 3))
     
     return magnetic_soucres, fft_tmp, magnetic_vector_potential_1d, magnetic_vector_potential_3d, planfft, planifft
 end

@@ -28,9 +28,9 @@ function _create_Greens_function(radius, k_b, a)
     # sommerfeld radiation condition
     scalar_G = 3/(k_b*a)^2*(sin(k_b*a)/(k_b*a)-cos(k_b*a))
     # Green's function at r != 0
-    G = @. exp.(-1im*k_b*radius)/(4*π*radius)*scalar_G
+    G = @. exp.(-1im*k_b*radius)/(4*Float32(π)*radius)*scalar_G
     # Green's function at r = 0
-    G₀ = 3/(4*π*k_b^2*a^3)*((1+1im*k_b*a)*exp(-1im*k_b*a)-1)
+    G₀ = 3/(4*Float32(π)*k_b^2*a^3)*((1+1im*k_b*a)*exp(-1im*k_b*a)-1)
     G = circshift(G, floor.(Int, size(G)./2))
     G[1,1,1] = G₀
 
@@ -85,30 +85,33 @@ end
 source_to_incident_field!(source_to_field, vector_potential_1d, vector_potential_3d, G, dielectric, Ig, operator, fft_tmp, planfft, planifft, scaling)\n
 Compute the incident field in a vacuum given a source distribution\n
 source_to_field will contain the initial source distribution and will contain the incident field when the function is finished\n
+Use when electric source to electric field or magnetic source to magnetic field.\n
 For an electric current density distribution to incident electric field:\n
     source_to_field: J\n
     vector_potential_1d: a\n
     vector_potential_3d: A\n
     operator: AtoE\n
     scaling: 1/(1im*ω*ϵ₀)\n
-For an electric current density distribution to incident magnetic field:\n
-    source_to_field: J\n
-    vector_potential_1d: a\n
-    vector_potential_3d: A\n 
-    operator: AtoH\n
-    scaling: 1/(1im*ω*ϵ₀)\n
-For a magnetic source distribution to incident electric field:\n
-    source_to_field: K\n
-    vector_potential_1d: f\n
-    vector_potential_3d: F\n
-    operator: FtoE\n
-    scaling: 1/(1im*ω*μ₀)\n
 For a magnetic source distribution to incident magnetic field:\n
     source_to_field: K\n
     vector_potential_1d: f\n
     vector_potential_3d: F\n
     operator: FtoH\n
     scaling: 1/(1im*ω*μ₀)\n
+source_to_incident_field!(incident_field, source, vector_potential_1d, vector_potential_3d, G, dielectric, Ig, operator, fft_tmp, planfft, planifft, scaling)\n
+Use when electric source to magnetic field or magnetic source to electric field.\n
+For a magnetic source distribution to incident electric field:\n
+    source_to_field: K\n
+    vector_potential_1d: f\n
+    vector_potential_3d: F\n
+    operator: FtoE\n
+    scaling: 1/(1im*ω*μ₀)\n
+For an electric current density distribution to incident magnetic field:\n
+    source_to_field: J\n
+    vector_potential_1d: a\n
+    vector_potential_3d: A\n 
+    operator: AtoH\n
+    scaling: 1/(1im*ω*ϵ₀)\n
 """
 function source_to_incident_field!(
     source_to_field,
@@ -126,6 +129,27 @@ function source_to_incident_field!(
     _Greens_function_times_contrast_source!(vector_potential_1d, G, dielectric.vac, source_to_field, vector_potential_3d, Ig, fft_tmp, planfft, planifft)
     mul!(source_to_field, operator, vector_potential_1d)
     @. source_to_field *= scaling
+
+    return nothing
+end
+
+function source_to_incident_field!(
+    incident_field,
+    source,
+    vector_potential_1d,
+    vector_potential_3d,
+    G,
+    dielectric,
+    Ig,
+    operator,
+    fft_tmp,
+    planfft,
+    planifft,
+    scaling
+)
+    _Greens_function_times_contrast_source!(vector_potential_1d, G, dielectric.vac, source, vector_potential_3d, Ig, fft_tmp, planfft, planifft)
+    mul!(incident_field, operator, vector_potential_1d)
+    @. incident_field *= scaling
 
     return nothing
 end 
