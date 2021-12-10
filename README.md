@@ -63,7 +63,7 @@ z_axis = -hr*res[3]:res[3]:hr*res[3] |> collect |> s -> reshape(s,(1,1,:))|> s -
 Next, we create a dielectric that we will use as a background
 
 ```julia
-# create background dielectric (sphere within vacuum)
+# create background dielectric (cube within vacuum)
 BG_σ = zeros(Float32,np,nq,nr);
 BG_ϵr = ones(Float32,np,nq,nr);
 
@@ -76,7 +76,7 @@ Then we want to create the dielectric we want to end up with.
 
 ```julia
 # create the scenario we want to obtain 
-# a smaller sphere within the background dielectric
+# a smaller cube outside the background dielectric
 Update_σ = copy(BG_σ);
 Update_ϵr = copy(BG_ϵr);
 
